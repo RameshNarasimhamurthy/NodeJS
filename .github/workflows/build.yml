@@ -1,18 +1,24 @@
-name: Build
+name: deploy to lambda
 on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
   push:
     branches:
-      - master # or the name of your main branch
+      - master
 jobs:
-  build:
-    name: Build
+
+
+  deploy_source:
+    name: deploy lambda from source
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: checkout source code
+        uses: actions/checkout@v1
+      - name: default deploy
+        uses: appleboy/lambda-action@master
         with:
-          fetch-depth: 0
-      - uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: 2348b94161c4959ca08dc1d9f4e89faf861ce305
-          SONAR_HOST_URL: https://fbdf-2406-7400-9d-c8d6-6064-9bcc-76ce-5769.ngrok.io
-      
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-1
+          function_name: github
+          source: index.js
