@@ -1,32 +1,71 @@
-name: deploy to lambda
+name: production
+
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
   push:
     branches:
       - master
+  
 jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [16]
+    env:
+      NODE_ENV: "development"
 
 
-  deploy_source:
-    name: deploy lambda from source
-    runs-on: ubuntu-latest
     steps:
-      - name: checkout source code
-        uses: actions/checkout@v1
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Checkout 🛎
+        uses: actions/checkout@master
+
+      - name: Setup node env 🏗
+        uses: actions/setup-node@v2.1.2
         with:
-          node-version: 14
-      - name: Install dependencies
+          node-version: ${{ matrix.node }}
+
+      - name: Cache node_modules 📦
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Installing NPM
         run: npm install
-      - name: default deploy
-        uses: appleboy/lambda-action@master
+
+      - name: Building application
+        run: npm run build
+
+      - name: Generate deployment package
+        run: zip -r deploy.zip * .[^.]* -x "**node_modules**"
+
+      - name: Get timestamp
+        uses: gerred/actions/current-time@master
+        id: current-time
+
+      - name: Run string replace
+        uses: frabert/replace-string-action@master
+        id: format-time
         with:
-          aws_access_key_id: AKIA25IUCIPEQMOKOMU2
-          aws_secret_access_key: PEWz/Ix933QPTLlauiYzChkTAczz1ksHoo3/4JIg
-          aws_region: us-east-1
-          function_name: github
-          source: index.js
+          pattern: '[:\.]+'
+          string: "${{ steps.current-time.outputs.time }}"
+          replace-with: '-'
+          flags: 'g'
+
+      - name: Beanstalk Deploy for app
+        uses: einaregilsson/beanstalk-deploy@v16
+        with:
+          aws_access_key: AKIA25IUCIPE7GCVQJZ3
+          aws_secret_key: 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
+          application_name: Node
+          environment_name: Node-env
+          region: us-east-1
+          version_label: "e-learn-${{ steps.format-time.outputs.replaced }}"
+          deployment_package: deploy.zip
+
+      - name: Deployed!
+        run: echo App deployed to ELB
