@@ -12,7 +12,6 @@ jobs:
       - name: Generate deployment package
         run: zip -r deploy.zip * .[^.]* -x "**node_modules**"
       - name: Deploy to Elastic Beanstalk
-        uses: einaregilsson/beanstalk-deploy@v15
         with:
            version_label: v1.12
            version_description: This is version v1.12
